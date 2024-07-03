@@ -1,0 +1,57 @@
+version: '3.7'
+
+services:
+  backend:
+    container_name: "${COMPOSE_PROJECT_NAME}-${BACKEND_NAME}"
+    volumes:
+      - static:/app
+      - ./www/backend:/app
+    build:
+      context: ./www/backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    restart: "always"
+    depends_on:
+      - database
+    links:
+      - database
+  nginx:
+    build:
+      context: ./nginx
+    volumes:
+      - static:/static
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+  database:
+    # image: postgres:15
+    build:
+      context: "./bin/${DATABASE}"
+    container_name: "${COMPOSE_PROJECT_NAME}-${DATABASE}"
+    restart: "always"
+    volumes:
+      - ./data/mysql:/var/lib/mysql #postgres_data:/var/lib/postgresql/data/
+      - ./config/initdb:/docker-entrypoint-initdb.d
+      - ./logs/mysql:/var/log/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    # environment:
+    #   POSTGRES_USER: "${POSTGRES_USER}"
+    #   POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    #   POSTGRES_DB: "${POSTGRES_DATABASE}"
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysql", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}", "-e", "SELECT 1"]
+      timeout: 20s
+      retries: 10
+
+volumes:
+  static:
+  data:
